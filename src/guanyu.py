@@ -6,6 +6,9 @@ from functools import wraps
 from multiprocessing import Process
 
 
+# TODO: Make user be able to implement their own job scheduling strategies.
+# TODO: Hammer on the name of the job: work? job? task?
+# TODO: Make the current process object reserved argument for worker.
 def parallelize(work=[], process=4):
     """Parallelize the decorated function.
 
