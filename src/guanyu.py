@@ -1,14 +1,39 @@
 # -*- encoding: utf-8 -*-
+# TODO: Make the current process object reserved argument for worker?
+#       Better logging.
+#       Dashboard.
+#       Expose all arguments of Process to user.
 
 from __future__ import absolute_import, division, print_function, with_statement
 
+import logging
 
 from errors import TooManyTasksError
 from functools import wraps
-from multiprocessing import Process
+from multiprocessing import Process, current_process
 
 
-# TODO: Make the current process object reserved argument for worker?
+# FIXME: expose LOGGER or not
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.NOTSET)
+
+_handler = logging.StreamHandler()
+_formatter = logging.Formatter('[%(asctime)s - %(levelname)s] %(message)s')
+
+_handler.setFormatter(_formatter)
+LOGGER.addHandler(_handler)
+
+
+# TODO: add option to toggle swallowing exception
+def log(raw_msg, lvl=logging.INFO):
+    msg = '{pcs_name}: {raw_msg}'
+    try:
+        pcs_name = current_process().name
+        LOGGER.log(lvl, msg.format(pcs_name=pcs_name, raw_msg=raw_msg))
+    except:
+        return
+
+
 class GuanYu(object):
 
     def __init__(self, process=4):
@@ -31,18 +56,21 @@ class GuanYu(object):
         :tasks: A iterable of tasks to be assigned to each worker process.
         """
         parts = []
-        total = len(tasks)
-        chunck_size = int(total / self.process)
-        remainder = total % self.process
+        try:
+            total = len(tasks)
+            chunck_size = int(total / self.process)
+            remainder = total % self.process
 
-        end = 0
-        for i in range(self.process):
-            start = end
-            end = start + chunck_size
-            if remainder > 0:
-                end += 1
-            parts.append(tasks[start:end])
-            remainder -= 1
+            end = 0
+            for i in range(self.process):
+                start = end
+                end = start + chunck_size
+                if remainder > 0:
+                    end += 1
+                parts.append(tasks[start:end])
+                remainder -= 1
+        except Exception, e:
+            LOGGER.error(e)
 
         return parts
 
@@ -60,6 +88,7 @@ class GuanYu(object):
                 one reversed argument as its first argument. This argument
                 will be passed in a subset of `tasks` for each process to work
                 on. For example, you can define a worker function like this:
+                    guanyu = GuanYu()
                     @guanyu.parallelize(all_work)
                     def worker(tasks):
                         ...
@@ -97,6 +126,7 @@ class GuanYu(object):
                         p = Process(target=f, args=new_args, kwargs=kwargs)
                         jobs.append(p)
                         p.start()
+                        log('Scheduling {}'.format(p.name))
 
                     for job in jobs:
                         job.join()
