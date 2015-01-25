@@ -39,6 +39,7 @@ class GuanYu(object):
     def __init__(self, process=4):
         self.process = process
 
+    # FIXME: fix scheduling when task is less than the no. of processes
     def scheduler(self, tasks):
         """This method schedules `tasks` for the processes.
 
